@@ -10,10 +10,10 @@ const SOURCE = `# 图和文字是一体的
 我没有选择Skill的原因是因为实际上Skill每次在执行的时候它都会浪费Token的，但我认为这种排版的工作不需要去用Token，而且实际上有一些细小的视觉上面的审美差别，人可能还是要调一下的。
 
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
-const KEY = 'maoyan-layout-prototype-v1';
+const KEY = 'maoyan-layout-prototype-v2';
 const DEFAULTS = {
-  wheat: { name: '麦浪青野', paper: '#F1ECE0', heading: '#117C0D', body: '#29332A', accent: '#FAC75E', font: 'wenkai' },
-  lime: { name: '荔枝青绿', paper: '#FEFFEF', heading: '#0961F6', body: '#29332A', accent: '#BDDD22', font: 'system' },
+  wheat: { name: '麦浪青野', paper: '#F7F3E8', heading: '#117C0D', body: '#29332A', accent: '#FAC75E', font: 'wenkai' },
+  lime: { name: '荔枝青绿', paper: '#F8F7F0', heading: '#0961F6', body: '#29332A', accent: '#BDDD22', font: 'system' },
 };
 const FONTS = { wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif', system: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif' };
 const $ = (id) => document.getElementById(id);
