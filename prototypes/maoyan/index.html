@@ -2,41 +2,23 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>猫彦 · 图文排版工作台</title>
+  <title>猫彦 · Obsidian 排版插件</title>
   <link rel="icon" href="data:,"><link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
 <body>
-<a class="skip" href="#note">跳到当前笔记</a>
-<header class="app-header">
-  <div class="brand"><span class="brand-mark">彦</span><div><strong>猫彦 <span class="quiet">/</span> 图文排版</strong><small>Obsidian 插件交互原型</small></div></div>
-  <div class="header-actions"><span class="local-state" id="save-status">本机草稿</span><button class="primary" id="export">导出图文 <span aria-hidden="true">↗</span></button></div>
-</header>
-<div class="workspace">
-  <aside class="vault-panel" aria-label="文件列表">
-    <div class="vault-top"><span class="vault-icon">⌁</span><span>文件列表</span><button aria-label="收起文件列表">‹</button></div>
-    <div class="vault-search">⌕ <span>搜索</span></div>
-    <div class="vault-section"><span>猫彦 IP</span><span>⌄</span></div>
-    <div class="vault-file active"><span class="file-dot"></span>把时间留给内容</div>
-    <div class="vault-file"><span class="file-dot"></span>内容排版记录</div>
-    <div class="vault-file"><span class="file-dot"></span>视觉系统</div>
-    <div class="vault-footer"><span class="status-dot"></span>本地库</div>
-  </aside>
-  <main id="note" class="note-panel" tabindex="-1" aria-label="当前笔记">
-    <div class="note-toolbar"><div><span class="eyebrow">猫彦 IP / 内容</span><span class="note-path">把时间留给内容.md</span></div><div class="note-tools"><button aria-label="阅读视图">▢</button><button aria-label="更多操作">•••</button></div></div>
-    <article class="note-editor">
-      <div class="note-meta"><span>2026年9月10日</span><span>·</span><span>正在编辑</span></div>
-      <h1>图和文字是一体的</h1>
-      <p>我的内容创作我觉得图和文字是一体的，我不太喜欢我的图出来了以后。又要再去把它排版，上传一次去网页。</p>
-      <p class="note-highlight">有一些细小的视觉上面的审美差别，人可能还是要调一下的。</p>
-      <p>虽然 AI 可以加速人们的效率，但我觉得也没有必要这么快。</p>
-      <p>如果是科技点的话，可能就是荔枝白跟嫩绿那种更亮眼一点的颜色。</p>
-      <p>我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。</p>
-    </article>
-    <div class="note-footer"><span>Markdown</span><span>141 字</span></div>
-  </main>
-  <aside class="inspector" aria-label="排版设置">
-    <div class="panel-heading"><span class="eyebrow">猫彦排版</span><button id="undo" title="撤销样式修改" disabled>撤销</button><button id="redo" title="重做样式修改" disabled>重做</button></div>
+<a class="skip" href="#preview">跳到卡片预览</a>
+<main class="plugin-stage">
+  <aside class="inspector" aria-label="猫彦排版插件面板">
+    <header class="plugin-header">
+      <div class="brand"><span class="brand-mark">彦</span><div><strong>猫彦排版</strong><small>示例笔记 · 把时间留给内容.md</small></div></div>
+      <button class="primary" id="export">导出 <span aria-hidden="true">↗</span></button>
+    </header>
+    <div class="plugin-status">
+      <span><i class="status-dot"></i><span id="save-status">本机草稿</span></span>
+      <span class="connection-state">笔记读取待接入</span>
+    </div>
+    <div class="panel-heading history-actions"><span class="eyebrow">排版预览</span><span><button id="undo" title="撤销样式修改" disabled>撤销</button><button id="redo" title="重做样式修改" disabled>重做</button></span></div>
     <section class="preview-dock" id="preview" aria-label="卡片预览">
       <div class="preview-heading"><div><span class="eyebrow">图文预览</span><h2>3:4 卡片</h2></div><span class="ratio-label">3:4</span></div>
       <div class="preview-tools"><div class="segmented" aria-label="预览模式"><button id="compare" aria-pressed="true">双主题</button><button id="single" aria-pressed="false">当前主题</button></div></div>
@@ -70,14 +52,14 @@
       <label class="field-label" for="profile-bio">小简介</label><input id="profile-bio" value="" maxlength="50" placeholder="写一句你的简介（可留空）">
       <small class="subtle">头像默认为文字占位，选择本地图片即可替换。</small>
     </section>
+    <section id="export-panel" class="export-panel" hidden aria-label="导出方案">
+      <div class="panel-heading"><h3>导出到笔记旁边</h3><button id="close-export" aria-label="收起导出方案">×</button></div>
+      <p class="notice">文件导出待接入，当前仅预览路径。</p>
+      <p>当前主题：<strong id="export-theme"></strong> · PNG · 1728 × 2304</p>
+      <pre id="export-path"></pre>
+      <button disabled>保存到笔记文件夹（待接入）</button>
+    </section>
   </aside>
-</div>
-<section id="export-panel" class="export-panel" hidden aria-label="导出方案">
-  <div class="panel-heading"><h3>导出到笔记旁边</h3><button id="close-export" aria-label="收起导出方案">×</button></div>
-  <p class="notice">文件导出尚未接入 · 以下为路径预览，不会创建文件。</p>
-  <p>当前主题：<strong id="export-theme"></strong> · PNG · 1728 × 2304</p>
-  <pre id="export-path"></pre>
-  <button disabled>保存到笔记文件夹（待接入）</button>
-</section>
+</main>
 <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
 </body></html>
