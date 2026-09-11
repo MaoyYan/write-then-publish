@@ -12,8 +12,8 @@ const SOURCE = `# 图和文字是一体的
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
 const KEY = 'maoyan-layout-prototype-v7';
 const DEFAULTS = {
-  wheat: { name: '人文青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', keyOpacity: 100, font: 'wenkai' },
-  lime: { name: '荔青科技', paper: '#F6F7F4', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'source-sans' },
+  wheat: { name: '人文青野', paper: '#F0EEE9', text: '#29332A', key: '#117C0D', keyOpacity: 100, font: 'wenkai' },
+  lime: { name: '荔青科技', paper: '#FBF9F5', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'source-sans' },
 };
 const PAPER_PRESETS = [
   { name: '净白', value: '#FFFFFF' },
@@ -42,6 +42,7 @@ let pageIndex = 0;
 let storageAvailable = true;
 let themeEditorMode = 'edit';
 let draftTheme = null;
+let migratedBuiltInPapers = false;
 try {
   const saved = JSON.parse(localStorage.getItem(KEY));
   if (saved && saved.source === SOURCE && saved.themes?.[saved.active]
@@ -51,6 +52,13 @@ try {
     && typeof saved.edits === 'object' && Array.isArray(saved.custom)
     && saved.custom.every((key) => saved.themes[key])) state = saved;
 } catch { storageAvailable = false; }
+
+for (const [key, legacyPaper] of [['wheat', '#F7F5EF'], ['lime', '#F6F7F4']]) {
+  if (state.themes[key]?.paper === legacyPaper) {
+    state.themes[key].paper = DEFAULTS[key].paper;
+    migratedBuiltInPapers = true;
+  }
+}
 
 function persist() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); $('save-status').textContent = '已保存到本机'; }
@@ -486,6 +494,8 @@ function updateExport() {
 }
 $('export').onclick = () => { $('export-panel').hidden = false; updateExport(); $('export-panel').scrollIntoView({ block:'nearest' }); };
 $('close-export').onclick = () => $('export-panel').hidden = true;
-syncControls(); updateSelection(); render();
+syncControls();
+if (migratedBuiltInPapers) persist();
+updateSelection(); render();
 document.fonts.load('20px WenkaiLocal').then(scheduleRender).catch(() => {});
 if (!storageAvailable) $('save-status').textContent = '存储不可用，当前修改仅本次有效';
