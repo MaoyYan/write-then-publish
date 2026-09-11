@@ -17,9 +17,11 @@ const DEFAULTS = {
 };
 const PAPER_PRESETS = [
   { name: '净白', value: '#FFFFFF' },
+  { name: '柔白', value: '#F7F7F5' },
   { name: '柔灰', value: '#E9E8E4' },
   { name: '暖白', value: '#FBF9F5' },
   { name: '柔雾', value: '#F0EEE9' },
+  { name: '青灰', value: '#EFF4EF' },
 ];
 const FONTS = {
   wenkai: '"LXGW WenKai Screen",WenkaiLocal,"Kaiti SC",KaiTi,serif',
@@ -386,30 +388,60 @@ function updateThemeValue(role, value) {
   else change(() => state.themes[state.active][role] = value);
 }
 for (const [role, name] of Object.entries(colorNames)) {
-  const box = document.createElement('div');
+  const box = document.createElement('div'); box.className = role === 'paper' ? 'theme-color-field paper-color-field' : 'theme-color-field';
   const label = document.createElement('label'); label.className = 'field-label'; label.htmlFor = `theme-${role}`; label.textContent = name;
   const row = document.createElement('div'); row.className = 'color-row';
-  const picker = document.createElement('input'); picker.type = 'color'; picker.id = `picker-${role}`; picker.setAttribute('aria-label', `${name}色板`);
+  let picker;
+  let panelHex;
+  if (role === 'paper') {
+    picker = document.createElement('button'); picker.type = 'button'; picker.id = `picker-${role}`; picker.className = 'paper-color-trigger';
+    picker.setAttribute('aria-label', '打开背景颜色面板'); picker.setAttribute('aria-expanded', 'false'); picker.style.setProperty('--paper-color', currentTheme().paper);
+  } else {
+    picker = document.createElement('input'); picker.type = 'color'; picker.id = `picker-${role}`; picker.setAttribute('aria-label', `${name}色板`);
+  }
   const hex = document.createElement('input'); hex.id = `theme-${role}`; hex.maxLength = 7; hex.setAttribute('aria-label', `${name}色码`);
   const update = value => {
     if (!validHex(value)) { $('theme-error').textContent = `${name}请输入完整 HEX 色码，例如 #F1ECE0。`; hex.setAttribute('aria-invalid','true'); return; }
-    hex.setAttribute('aria-invalid','false'); $('theme-error').textContent = ''; picker.value = value; hex.value = value.toUpperCase();
-    if (role === 'paper') syncPaperPresetState(value);
+    hex.setAttribute('aria-invalid','false'); $('theme-error').textContent = '';
+    if (role === 'paper') {
+      picker.style.setProperty('--paper-color', value);
+      if (panelHex) panelHex.value = value.toUpperCase();
+      syncPaperPresetState(value);
+    } else picker.value = value;
+    hex.value = value.toUpperCase();
     updateThemeValue(role, value);
   };
-  picker.onchange = e => update(e.target.value); hex.onchange = e => update(e.target.value.trim());
-  row.append(picker, hex); box.append(label, row);
   if (role === 'paper') {
-    const presets = document.createElement('div'); presets.className = 'paper-presets'; presets.setAttribute('aria-label', '参考底色');
+    const popover = document.createElement('div'); popover.className = 'paper-color-popover'; popover.hidden = true;
+    const panelLabel = document.createElement('label'); panelLabel.className = 'field-label'; panelLabel.htmlFor = 'paper-panel-hex'; panelLabel.textContent = 'HEX 色码';
+    panelHex = document.createElement('input'); panelHex.id = 'paper-panel-hex'; panelHex.maxLength = 7; panelHex.setAttribute('aria-label', '背景 HEX 色码');
+    panelHex.onchange = e => update(e.target.value.trim());
+    panelHex.onkeydown = e => { if (e.key === 'Enter') { update(e.target.value.trim()); e.target.blur(); } };
+    const presetLabel = document.createElement('span'); presetLabel.className = 'paper-preset-label'; presetLabel.textContent = '常见底色';
+    const presets = document.createElement('div'); presets.className = 'paper-presets'; presets.setAttribute('aria-label', '常见底色');
     for (const preset of PAPER_PRESETS) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'paper-preset';
       button.dataset.paperPreset = preset.value; button.title = `${preset.name} ${preset.value}`; button.setAttribute('aria-label', `${preset.name} ${preset.value}`);
-      button.style.setProperty('--preset-color', preset.value); button.onclick = () => update(preset.value);
+      button.style.setProperty('--preset-color', preset.value); button.onclick = () => { update(preset.value); closePaperColorPopover(); };
       presets.append(button);
     }
-    box.append(presets);
-  }
+    popover.append(panelLabel, panelHex, presetLabel, presets); popover.onclick = event => event.stopPropagation(); box.append(popover);
+    picker.onclick = event => {
+      event.stopPropagation();
+      const willOpen = popover.hidden;
+      closePaperColorPopover();
+      if (willOpen) { popover.hidden = false; picker.setAttribute('aria-expanded', 'true'); panelHex.value = hex.value; panelHex.focus(); panelHex.select(); }
+    };
+  } else picker.onchange = e => update(e.target.value);
+  hex.onchange = e => update(e.target.value.trim());
+  row.append(picker, hex); box.append(label, row);
   $('theme-colors').append(box);
+}
+function closePaperColorPopover() {
+  const popover = document.querySelector('.paper-color-popover');
+  const trigger = $('picker-paper');
+  if (!popover || !trigger) return;
+  popover.hidden = true; trigger.setAttribute('aria-expanded', 'false');
 }
 function syncPaperPresetState(value) {
   document.querySelectorAll('[data-paper-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.paperPreset === value.toUpperCase())));
@@ -417,7 +449,13 @@ function syncPaperPresetState(value) {
 function syncThemeControls() {
   const theme = currentTheme();
   $('font').value = theme.font;
-  Object.keys(colorNames).forEach(role => { $(`theme-${role}`).value = theme[role].toUpperCase(); $(`picker-${role}`).value = theme[role]; });
+  Object.keys(colorNames).forEach(role => {
+    $(`theme-${role}`).value = theme[role].toUpperCase();
+    if (role === 'paper') {
+      $(`picker-${role}`).style.setProperty('--paper-color', theme[role]);
+      $('paper-panel-hex').value = theme[role].toUpperCase();
+    } else $(`picker-${role}`).value = theme[role];
+  });
   syncPaperPresetState(theme.paper);
   $('key-opacity').value = theme.keyOpacity;
   $('key-opacity-number').value = theme.keyOpacity;
