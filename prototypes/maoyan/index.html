@@ -11,32 +11,22 @@
 <main class="plugin-stage">
   <aside class="inspector" aria-label="猫彦排版插件面板">
     <header class="plugin-header">
-      <div class="brand"><span class="brand-mark">彦</span><div><strong>猫彦排版</strong><small>示例笔记 · 把时间留给内容.md</small></div></div>
+      <div class="brand"><span class="brand-mark">彦</span><div><strong>猫彦排版</strong><small><i class="status-dot"></i> 把时间留给内容.md · 读取待接入</small><span id="save-status" class="sr-only">本机草稿</span></div></div>
       <button class="primary" id="export">导出 <span aria-hidden="true">↗</span></button>
     </header>
-    <div class="plugin-status">
-      <span><i class="status-dot"></i><span id="save-status">本机草稿</span></span>
-      <span class="connection-state">笔记读取待接入</span>
-    </div>
     <section class="preview-dock" id="preview" aria-label="卡片预览">
-      <div class="preview-heading"><div><span class="eyebrow">图文预览</span><h2>3:4 卡片</h2></div><span class="ratio-label">3:4</span></div>
+      <div class="preview-heading"><div><span class="eyebrow">图文预览</span><h2>3:4 卡片</h2></div><div class="preview-actions"><span class="ratio-label">3:4</span><button class="more-trigger" id="format-more" aria-label="更多文字操作" aria-expanded="false" aria-controls="format-more-menu">•••</button><div class="more-menu" id="format-more-menu" hidden><button id="undo" disabled>撤销</button><button id="redo" disabled>重做</button><button id="clear" disabled>清除格式</button></div></div></div>
       <div class="formatting-area" id="text-tools">
         <div class="formatting-toolbar" role="toolbar" aria-label="文字格式">
-          <button class="tool-button" id="undo" title="撤销" aria-label="撤销" disabled>↶</button>
-          <button class="tool-button" id="redo" title="重做" aria-label="重做" disabled>↷</button>
+          <select class="tool-select font-tool" id="format-font" aria-label="字体" title="字体" disabled><option value="">字体</option><option value="wenkai">霞鹜文楷</option><option value="source-serif">思源宋体</option><option value="zhuque">朱雀仿宋</option><option value="source-sans">思源黑体</option></select>
+          <select class="tool-select size-tool" id="format-size" aria-label="字号" title="字号" disabled><option value="">字号</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option></select>
           <span class="tool-divider" aria-hidden="true"></span>
           <button class="tool-button" id="bold" title="加粗" aria-label="加粗" disabled><b>B</b></button>
           <button class="tool-button" id="italic" title="斜体" aria-label="斜体" disabled><i>I</i></button>
           <button class="tool-button" id="underline" title="下划线" aria-label="下划线" disabled><u>U</u></button>
           <button class="tool-button strike-tool" id="strike" title="删除线" aria-label="删除线" disabled>S</button>
-          <span class="tool-divider" aria-hidden="true"></span>
           <button class="tool-button color-trigger" id="text-color-trigger" title="字体颜色" aria-label="字体颜色" aria-expanded="false" aria-controls="text-color-popover" disabled><span class="tool-letter">A</span><i class="color-indicator text-indicator"></i><span class="chevron">⌄</span></button>
           <button class="tool-button color-trigger" id="highlight-trigger" title="背景高亮" aria-label="背景高亮" aria-expanded="false" aria-controls="highlight-popover" disabled><span class="marker-icon">▱</span><i class="color-indicator highlight-indicator"></i><span class="chevron">⌄</span></button>
-          <span class="tool-divider" aria-hidden="true"></span>
-          <select class="tool-select font-tool" id="format-font" aria-label="字体" title="字体" disabled><option value="">字体</option><option value="wenkai">霞鹜文楷</option><option value="source-serif">思源宋体</option><option value="zhuque">朱雀仿宋</option><option value="source-sans">思源黑体</option></select>
-          <select class="tool-select size-tool" id="format-size" aria-label="字号" title="字号" disabled><option value="">字号</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option></select>
-          <span class="tool-divider" aria-hidden="true"></span>
-          <button class="tool-button clear-tool" id="clear" title="清除格式" aria-label="清除格式" disabled>Tx</button>
         </div>
         <div class="color-popover" id="text-color-popover" hidden>
           <strong>字体颜色</strong>
@@ -66,14 +56,13 @@
           <label class="field-label" for="opacity">透明度</label>
           <div class="opacity-row"><input id="opacity" type="range" min="0" max="100" value="57"><input id="opacity-number" type="number" min="0" max="100" value="57" aria-label="高亮透明度百分比"><span>%</span></div>
         </div>
-        <div class="selection-state"><span id="selection-count">未选中文字</span><span id="selection-text">请先在卡片中拖选文字</span></div>
+        <div class="selection-state" id="selection-state" hidden><span id="selection-count"></span><span id="selection-text"></span></div>
         <p id="text-error" class="error" role="alert"></p>
       </div>
       <div id="cards" class="cards-grid"></div>
     </section>
     <section class="settings-section theme-settings">
-      <div class="theme-section-heading"><h3>主题</h3><button id="add-theme" class="compact-action">＋ 新增</button></div>
-      <div class="theme-list" id="theme-list" aria-label="主题预设"></div>
+      <div class="theme-section-heading"><h3>主题</h3><div class="theme-list" id="theme-list" aria-label="主题预设"></div><button id="add-theme" class="compact-action" aria-label="新增主题">＋</button></div>
       <div class="theme-editor" id="theme-editor" hidden>
         <div class="panel-heading"><strong id="theme-editor-title">主题设置</strong><button id="close-theme-editor" aria-label="关闭主题设置">×</button></div>
         <label class="field-label" for="font">字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="source-serif">思源宋体</option><option value="zhuque">朱雀仿宋</option><option value="source-sans">思源黑体</option></select>
@@ -86,7 +75,6 @@
       </div>
     </section>
     <section class="settings-section identity-settings">
-      <h3>卡片身份</h3>
       <div class="identity-editor">
         <label class="avatar-upload" title="更换头像"><span class="avatar-preview" id="avatar-preview">猫</span><input type="file" id="avatar" accept="image/png,image/jpeg,image/webp"><span class="sr-only">更换头像</span></label>
         <div class="identity-fields"><input id="profile-name" value="猫彦" maxlength="20" aria-label="IP 名称" placeholder="IP 名称"><input id="profile-bio" value="" maxlength="50" aria-label="小简介" placeholder="小简介"></div>

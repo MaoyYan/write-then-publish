@@ -32,6 +32,7 @@ const hexToRgba = (hex, opacity) => {
 let state = { source: SOURCE, active: 'wheat', themes: clone(DEFAULTS), edits: {}, profile: { name: '猫彦', bio: '', avatar: '' }, custom: [] };
 let selection = null;
 let past = [], future = [], renderFrame = 0;
+let pageIndex = 0;
 let storageAvailable = true;
 let themeEditorMode = 'edit';
 let draftTheme = null;
@@ -166,16 +167,25 @@ function render() {
     const theme = themeEditorMode === 'add' && draftTheme ? draftTheme : state.themes[key];
     const column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
     const heading = document.createElement('div'); heading.className = 'column-heading';
+    const meta = document.createElement('div'); meta.className = 'column-meta';
     const name = document.createElement('strong'); name.textContent = theme.name;
     const fontNames = { wenkai: '霞鹜文楷', 'source-serif': '思源宋体', zhuque: '朱雀仿宋', 'source-sans': '思源黑体' };
-    const font = document.createElement('small'); font.textContent = fontNames[theme.font]; heading.append(name, font); column.append(heading);
+    const font = document.createElement('small'); font.textContent = fontNames[theme.font]; meta.append(name, font);
     const pages = paginate(theme);
-    pages.forEach((paper, i) => {
-      paper.querySelector('.page-number').textContent = `${String(i+1).padStart(2,'0')} / ${String(pages.length).padStart(2,'0')}`;
-      paper.setAttribute('aria-label', `${theme.name}第${i+1}张卡片`);
-      const shell = document.createElement('div'); shell.className = 'card-shell'; shell.append(paper); column.append(shell); observer.observe(shell);
-      const label = document.createElement('div'); label.className = 'page-label'; label.textContent = `${i+1}.png · 1728 × 2304`; column.append(label);
-    });
+    pageIndex = Math.min(pageIndex, pages.length - 1);
+    const pager = document.createElement('div'); pager.className = 'page-pager';
+    const previous = document.createElement('button'); previous.textContent = '‹'; previous.setAttribute('aria-label', '上一张'); previous.disabled = pageIndex === 0;
+    const status = document.createElement('span'); status.textContent = `${pageIndex + 1} / ${pages.length}`;
+    const next = document.createElement('button'); next.textContent = '›'; next.setAttribute('aria-label', '下一张'); next.disabled = pageIndex === pages.length - 1;
+    const goToPage = index => {
+      pageIndex = index; selection = null; window.getSelection()?.removeAllRanges(); updateSelection(); render();
+    };
+    previous.onclick = () => goToPage(pageIndex - 1); next.onclick = () => goToPage(pageIndex + 1);
+    pager.append(previous, status, next); heading.append(meta, pager); column.append(heading);
+    const paper = pages[pageIndex];
+    paper.querySelector('.page-number').textContent = `${String(pageIndex + 1).padStart(2,'0')} / ${String(pages.length).padStart(2,'0')}`;
+    paper.setAttribute('aria-label', `${theme.name}第${pageIndex + 1}张卡片`);
+    const shell = document.createElement('div'); shell.className = 'card-shell'; shell.append(paper); column.append(shell); observer.observe(shell);
     $('cards').append(column);
   }
   updateExport();
@@ -196,6 +206,7 @@ document.addEventListener('selectionchange', () => {
 });
 function updateSelection() {
   const count = selection ? selection.end - selection.start : 0;
+  $('selection-state').hidden = !count;
   $('selection-count').textContent = count ? `已选 ${count} 字` : '未选中文字';
   $('selection-text').textContent = count ? allChars.slice(selection.start, selection.end).map(c => c.text).join('') : '请先在卡片中拖选文字';
   ['bold', 'italic', 'underline', 'strike', 'clear', 'text-color-trigger', 'highlight-trigger', 'apply-color', 'apply-highlight', 'format-font', 'format-size'].forEach(id => $(id).disabled = !count);
@@ -246,7 +257,7 @@ $('format-font').onchange = event => { if (FONTS[event.target.value]) applyStyle
 $('format-size').onchange = event => { const value = Number(event.target.value); if (value) applyStyle({ fontSize: value }); };
 $('clear').onclick = () => {
   change(() => { for (let i = selection.start; i < selection.end; i++) delete state.edits[i]; });
-  updateSelection();
+  updateSelection(); closeMoreMenu();
 };
 function readColor(id) {
   const value = $(id).value.trim();
@@ -284,6 +295,10 @@ function closePopovers() {
     $(triggerId).setAttribute('aria-expanded', 'false');
   }
 }
+function closeMoreMenu() {
+  $('format-more-menu').hidden = true;
+  $('format-more').setAttribute('aria-expanded', 'false');
+}
 function togglePopover(triggerId, popoverId) {
   const willOpen = $(popoverId).hidden;
   closePopovers();
@@ -291,11 +306,18 @@ function togglePopover(triggerId, popoverId) {
 }
 $('text-color-trigger').onclick = event => { event.stopPropagation(); togglePopover('text-color-trigger', 'text-color-popover'); };
 $('highlight-trigger').onclick = event => { event.stopPropagation(); togglePopover('highlight-trigger', 'highlight-popover'); };
+$('format-more').onclick = event => {
+  event.stopPropagation();
+  const willOpen = $('format-more-menu').hidden;
+  closePopovers(); closeMoreMenu();
+  if (willOpen) { $('format-more-menu').hidden = false; $('format-more').setAttribute('aria-expanded', 'true'); }
+};
+$('format-more-menu').onclick = event => event.stopPropagation();
 document.querySelectorAll('.color-popover').forEach(popover => popover.onclick = event => event.stopPropagation());
-document.addEventListener('click', closePopovers);
+document.addEventListener('click', () => { closePopovers(); closeMoreMenu(); });
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  closePopovers();
+  closePopovers(); closeMoreMenu();
   if (!$('theme-editor').hidden) closeThemeEditor();
 });
 document.querySelectorAll('[data-text-swatch]').forEach(button => button.onclick = () => {
@@ -310,8 +332,8 @@ document.querySelectorAll('[data-highlight-swatch]').forEach(button => button.on
   document.querySelector('.highlight-indicator').style.background = value;
   applyHighlight(value); closePopovers();
 });
-$('undo').onclick = () => travel(past, future);
-$('redo').onclick = () => travel(future, past);
+$('undo').onclick = () => { travel(past, future); closeMoreMenu(); };
+$('redo').onclick = () => { travel(future, past); closeMoreMenu(); };
 const colorNames = { paper: '背景', text: '文字', key: '重点色' };
 const currentTheme = () => themeEditorMode === 'add' && draftTheme ? draftTheme : state.themes[state.active];
 function renderThemeList() {
@@ -440,7 +462,7 @@ $('avatar').onchange = async e => {
 };
 function updateExport() {
   const theme = currentTheme();
-  const pages = document.querySelectorAll(`.theme-column[data-theme="${state.active}"] .paper`).length || paginate(theme).length;
+  const pages = paginate(theme).length;
   $('export-theme').textContent = theme.name;
   $('export-path').textContent = `会话选段-3比4图文/\n${Array.from({length:pages},(_,i) => `  ${i+1}.png`).join('\n')}`;
 }
