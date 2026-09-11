@@ -15,6 +15,12 @@ const DEFAULTS = {
   wheat: { name: '人文青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', keyOpacity: 100, font: 'wenkai' },
   lime: { name: '荔青科技', paper: '#F6F7F4', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'source-sans' },
 };
+const PAPER_PRESETS = [
+  { name: '净白', value: '#FFFFFF' },
+  { name: '柔灰', value: '#E9E8E4' },
+  { name: '暖白', value: '#FBF9F5' },
+  { name: '柔雾', value: '#F0EEE9' },
+];
 const FONTS = {
   wenkai: '"LXGW WenKai Screen",WenkaiLocal,"Kaiti SC",KaiTi,serif',
   'source-serif': '"Source Han Serif SC","Noto Serif CJK SC","Songti SC",STSong,SimSun,serif',
@@ -100,9 +106,6 @@ function makePaper(theme) {
   Object.entries({ '--paper': theme.paper, '--heading': theme.text, '--body': theme.text, '--accent-color': hexToRgba(theme.key, theme.keyOpacity), '--font': FONTS[theme.font] }).forEach(([k,v]) => paper.style.setProperty(k,v));
   paper.append(makeIdentity());
   const content = document.createElement('div'); content.className = 'paper-content'; paper.append(content);
-  const footer = document.createElement('div'); footer.className = 'paper-footer';
-  const label = document.createElement('span'); label.textContent = `${theme.name} / 会话选段`;
-  const count = document.createElement('span'); count.className = 'page-number'; footer.append(label, count); paper.append(footer);
   return paper;
 }
 function makeBlock(block, chars) {
@@ -129,8 +132,8 @@ function paginate(theme) {
   const pages = []; let paper, content;
   const nextPage = () => {
     paper = makePaper(theme); measure.replaceChildren(paper); content = paper.querySelector('.paper-content');
-    // Profile height is variable; the text always stops above the footer.
-    content.style.height = `${paper.querySelector('.paper-footer').offsetTop - content.offsetTop - 14}px`;
+    // Profile height is variable, so the remaining text area is measured after identity rendering.
+    content.style.height = `${paper.clientHeight - content.offsetTop - 28}px`;
     pages.push(paper);
   };
   nextPage();
@@ -183,7 +186,6 @@ function render() {
     previous.onclick = () => goToPage(pageIndex - 1); next.onclick = () => goToPage(pageIndex + 1);
     pager.append(previous, status, next); heading.append(meta, pager); column.append(heading);
     const paper = pages[pageIndex];
-    paper.querySelector('.page-number').textContent = `${String(pageIndex + 1).padStart(2,'0')} / ${String(pages.length).padStart(2,'0')}`;
     paper.setAttribute('aria-label', `${theme.name}第${pageIndex + 1}张卡片`);
     const shell = document.createElement('div'); shell.className = 'card-shell'; shell.append(paper); column.append(shell); observer.observe(shell);
     $('cards').append(column);
@@ -384,15 +386,31 @@ for (const [role, name] of Object.entries(colorNames)) {
   const update = value => {
     if (!validHex(value)) { $('theme-error').textContent = `${name}请输入完整 HEX 色码，例如 #F1ECE0。`; hex.setAttribute('aria-invalid','true'); return; }
     hex.setAttribute('aria-invalid','false'); $('theme-error').textContent = ''; picker.value = value; hex.value = value.toUpperCase();
+    if (role === 'paper') syncPaperPresetState(value);
     updateThemeValue(role, value);
   };
   picker.onchange = e => update(e.target.value); hex.onchange = e => update(e.target.value.trim());
-  row.append(picker, hex); box.append(label, row); $('theme-colors').append(box);
+  row.append(picker, hex); box.append(label, row);
+  if (role === 'paper') {
+    const presets = document.createElement('div'); presets.className = 'paper-presets'; presets.setAttribute('aria-label', '参考底色');
+    for (const preset of PAPER_PRESETS) {
+      const button = document.createElement('button'); button.type = 'button'; button.className = 'paper-preset';
+      button.dataset.paperPreset = preset.value; button.title = `${preset.name} ${preset.value}`; button.setAttribute('aria-label', `${preset.name} ${preset.value}`);
+      button.style.setProperty('--preset-color', preset.value); button.onclick = () => update(preset.value);
+      presets.append(button);
+    }
+    box.append(presets);
+  }
+  $('theme-colors').append(box);
+}
+function syncPaperPresetState(value) {
+  document.querySelectorAll('[data-paper-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.paperPreset === value.toUpperCase())));
 }
 function syncThemeControls() {
   const theme = currentTheme();
   $('font').value = theme.font;
   Object.keys(colorNames).forEach(role => { $(`theme-${role}`).value = theme[role].toUpperCase(); $(`picker-${role}`).value = theme[role]; });
+  syncPaperPresetState(theme.paper);
   $('key-opacity').value = theme.keyOpacity;
   $('key-opacity-number').value = theme.keyOpacity;
 }

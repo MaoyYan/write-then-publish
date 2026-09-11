@@ -86,13 +86,12 @@ small{font-size:11px}
 .identity-text{min-width:0}
 .identity strong{font-size:15px;font-family:-apple-system,"PingFang SC",sans-serif;overflow-wrap:anywhere;display:block;line-height:1.4}
 .identity small{display:block;font-family:-apple-system,"PingFang SC",sans-serif;font-size:10px;line-height:1.5;margin-top:4px;overflow-wrap:anywhere}
-.paper-content{height:420px;overflow:hidden}
-.paper-content h2{font-family:var(--font);color:var(--heading);font-size:29px;line-height:1.4;margin:0 0 18px;font-weight:700}
-.paper-content p{font-size:20px;line-height:1.8;white-space:pre-wrap;margin:0 0 18px;overflow-wrap:anywhere}
+.paper-content{height:450px;overflow:hidden}
+.paper-content h2{font-family:var(--font);color:var(--heading);font-size:23px;line-height:1.45;margin:0 0 16px;font-weight:700}
+.paper-content p{font-size:17px;line-height:1.85;white-space:pre-wrap;margin:0 0 16px;overflow-wrap:anywhere}
 .paper-content span{box-decoration-break:clone;-webkit-box-decoration-break:clone}
 .paper-content span.selected{outline:1px dotted #4c755b;outline-offset:1px}
 .paper-content ::selection{background:#aac4a8aa}
-.paper-footer{position:absolute;bottom:24px;left:32px;right:32px;display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--heading) 25%,transparent);font-family:-apple-system,"PingFang SC",sans-serif;font-size:10px;color:var(--heading)}
 .settings-section{padding:var(--section-gap) 0;border-bottom:1px solid var(--line)}
 .settings-section h3{display:flex;justify-content:space-between;align-items:center}
 .theme-settings{position:relative}
@@ -118,6 +117,9 @@ small{font-size:11px}
 .color-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
 .color-fields .color-row input:not([type=color]){font-size:10px;padding:4px;width:0;flex:1}
 .color-fields input[type=color]{width:28px;flex-basis:28px}
+.paper-presets{display:flex;gap:5px;margin-top:5px}
+.paper-preset{width:28px;min-width:28px;height:28px;min-height:28px;padding:0;background:var(--preset-color);border-color:#d4d5d1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.025)}
+.paper-preset[aria-pressed=true]{border-color:#236d35;box-shadow:0 0 0 1px #236d35,inset 0 0 0 1px rgba(0,0,0,.025)}
 .color-row{display:flex;gap:5px;align-items:center}
 .color-row input:not([type=color]){font-family:ui-monospace,"SFMono-Regular",monospace;font-size:12px;flex:1;width:0}
 .color-row button{padding:6px;font-size:11px}
