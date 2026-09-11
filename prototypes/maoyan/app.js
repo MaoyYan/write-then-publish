@@ -10,10 +10,10 @@ const SOURCE = `# 图和文字是一体的
 我没有选择Skill的原因是因为实际上Skill每次在执行的时候它都会浪费Token的，但我认为这种排版的工作不需要去用Token，而且实际上有一些细小的视觉上面的审美差别，人可能还是要调一下的。
 
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
-const KEY = 'maoyan-layout-prototype-v2';
+const KEY = 'maoyan-layout-prototype-v3';
 const DEFAULTS = {
-  wheat: { name: '麦浪青野', paper: '#F7F3E8', heading: '#117C0D', body: '#29332A', accent: '#FAC75E', font: 'wenkai' },
-  lime: { name: '荔枝青绿', paper: '#F8F7F0', heading: '#0961F6', body: '#29332A', accent: '#BDDD22', font: 'system' },
+  wheat: { name: '麦浪青野', paper: '#F7F5EF', heading: '#117C0D', body: '#29332A', accent: '#FAC75E', font: 'wenkai' },
+  lime: { name: '荔枝青绿', paper: '#F6F7F4', heading: '#0961F6', body: '#29332A', accent: '#BDDD22', font: 'system' },
 };
 const FONTS = { wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif', system: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif' };
 const $ = (id) => document.getElementById(id);
@@ -42,7 +42,7 @@ function change(fn, controls = false) {
 function syncHistory() { $('undo').disabled = !past.length; $('redo').disabled = !future.length; }
 function travel(from, to) {
   if (!from.length) return;
-  to.push(clone(state)); state = from.pop(); persist(); syncControls(); scheduleRender(); syncHistory();
+  to.push(clone(state)); state = from.pop(); persist(); syncControls(); scheduleRender(); syncHistory(); updateSelection();
 }
 function scheduleRender() { cancelAnimationFrame(renderFrame); renderFrame = requestAnimationFrame(render); }
 
@@ -178,8 +178,12 @@ document.addEventListener('selectionchange', () => {
 function updateSelection() {
   const count = selection ? selection.end - selection.start : 0;
   $('selection-count').textContent = count ? `已选 ${count} 字` : '未选中文字';
-  $('selection-text').textContent = count ? allChars.slice(selection.start, selection.end).map(c => c.text).join('') : '在卡片中拖选文字。';
-  ['bold', 'italic', 'underline', 'clear', 'apply-color', 'apply-highlight'].forEach(id => $(id).disabled = !count);
+  $('selection-text').textContent = count ? allChars.slice(selection.start, selection.end).map(c => c.text).join('') : '请先在卡片中拖选文字';
+  ['bold', 'italic', 'underline', 'clear', 'text-color-trigger', 'highlight-trigger', 'apply-color', 'apply-highlight'].forEach(id => $(id).disabled = !count);
+  for (const styleName of ['bold', 'italic', 'underline']) {
+    const active = count && allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.[styleName] ?? c.base[styleName]));
+    $(styleName).setAttribute('aria-pressed', String(Boolean(active)));
+  }
   document.querySelectorAll('.theme-column [data-i]').forEach(span => {
     const id = Number(span.dataset.i);
     span.classList.toggle('selected', Boolean(selection && id >= selection.start && id < selection.end));
@@ -189,6 +193,7 @@ function applyStyle(patch) {
   if (!selection) return;
   change(() => { for (let i = selection.start; i < selection.end; i++) state.edits[i] = { ...(state.edits[i] || {}), ...patch }; });
   $('announcement').textContent = `已调整 ${selection.end - selection.start} 个字，原文保持不变。`;
+  updateSelection();
 }
 $('bold').onclick = () => {
   const allBold = allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.bold ?? c.base.bold));
@@ -202,25 +207,68 @@ $('underline').onclick = () => {
   const allUnderline = allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.underline ?? c.base.underline));
   applyStyle({ underline: !allUnderline });
 };
-$('clear').onclick = () => change(() => { for (let i = selection.start; i < selection.end; i++) delete state.edits[i]; });
+$('clear').onclick = () => {
+  change(() => { for (let i = selection.start; i < selection.end; i++) delete state.edits[i]; });
+  updateSelection();
+};
 function readColor(id) {
   const value = $(id).value.trim();
   $('text-error').textContent = validHex(value) ? '' : '请输入完整 HEX 色码，例如 #117C0D。';
   $(id).setAttribute('aria-invalid', String(!validHex(value)));
   return validHex(value) ? value : null;
 }
-$('apply-color').onclick = () => { const value = readColor('text-color'); if (value) applyStyle({ color: value }); };
-$('apply-highlight').onclick = () => {
-  const value = readColor('highlight-color'), opacity = Number($('opacity-number').value);
-  if (!Number.isFinite(opacity) || opacity < 0 || opacity > 100 || $('opacity-number').value === '') { $('text-error').textContent = '透明度请输入 0 到 100。'; return; }
-  if (value) { const rgb = [1,3,5].map(i => parseInt(value.slice(i,i+2),16)); applyStyle({ background: `rgba(${rgb.join(',')},${opacity/100})` }); }
-};
+function applyHighlight(value) {
+  const opacity = Number($('opacity-number').value);
+  if (!Number.isFinite(opacity) || opacity < 0 || opacity > 100 || $('opacity-number').value === '') { $('text-error').textContent = '透明度请输入 0 到 100。'; return false; }
+  if (!value) return false;
+  const rgb = [1,3,5].map(i => parseInt(value.slice(i,i+2),16));
+  applyStyle({ background: `rgba(${rgb.join(',')},${opacity/100})` });
+  return true;
+}
+$('apply-color').onclick = () => { const value = readColor('text-color'); if (value) { applyStyle({ color: value }); closePopovers(); } };
+$('apply-highlight').onclick = () => { const value = readColor('highlight-color'); if (value && applyHighlight(value)) closePopovers(); };
 for (const role of ['text', 'highlight']) {
-  $(`${role}-picker`).oninput = (e) => { $(`${role}-color`).value = e.target.value.toUpperCase(); };
-  $(`${role}-color`).oninput = (e) => { if (validHex(e.target.value)) $(`${role}-picker`).value = e.target.value; };
+  $(`${role}-picker`).oninput = (e) => {
+    $(`${role}-color`).value = e.target.value.toUpperCase();
+    document.querySelector(`.${role}-indicator`).style.background = e.target.value;
+  };
+  $(`${role}-color`).oninput = (e) => {
+    if (validHex(e.target.value)) {
+      $(`${role}-picker`).value = e.target.value;
+      document.querySelector(`.${role}-indicator`).style.background = e.target.value;
+    }
+  };
 }
 $('opacity').oninput = e => $('opacity-number').value = e.target.value;
 $('opacity-number').oninput = e => { if (e.target.value !== '' && Number(e.target.value) >= 0 && Number(e.target.value) <= 100) $('opacity').value = e.target.value; };
+function closePopovers() {
+  for (const [triggerId, popoverId] of [['text-color-trigger','text-color-popover'],['highlight-trigger','highlight-popover']]) {
+    $(popoverId).hidden = true;
+    $(triggerId).setAttribute('aria-expanded', 'false');
+  }
+}
+function togglePopover(triggerId, popoverId) {
+  const willOpen = $(popoverId).hidden;
+  closePopovers();
+  if (willOpen) { $(popoverId).hidden = false; $(triggerId).setAttribute('aria-expanded', 'true'); }
+}
+$('text-color-trigger').onclick = event => { event.stopPropagation(); togglePopover('text-color-trigger', 'text-color-popover'); };
+$('highlight-trigger').onclick = event => { event.stopPropagation(); togglePopover('highlight-trigger', 'highlight-popover'); };
+document.querySelectorAll('.color-popover').forEach(popover => popover.onclick = event => event.stopPropagation());
+document.addEventListener('click', closePopovers);
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closePopovers(); });
+document.querySelectorAll('[data-text-swatch]').forEach(button => button.onclick = () => {
+  const value = button.dataset.textSwatch;
+  $('text-color').value = value; $('text-picker').value = value;
+  document.querySelector('.text-indicator').style.background = value;
+  applyStyle({ color: value }); closePopovers();
+});
+document.querySelectorAll('[data-highlight-swatch]').forEach(button => button.onclick = () => {
+  const value = button.dataset.highlightSwatch;
+  $('highlight-color').value = value; $('highlight-picker').value = value;
+  document.querySelector('.highlight-indicator').style.background = value;
+  applyHighlight(value); closePopovers();
+});
 $('undo').onclick = () => travel(past, future);
 $('redo').onclick = () => travel(future, past);
 $('compare').onclick = () => change(() => state.compare = true, true);

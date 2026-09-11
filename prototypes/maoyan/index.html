@@ -18,32 +18,65 @@
       <span><i class="status-dot"></i><span id="save-status">本机草稿</span></span>
       <span class="connection-state">笔记读取待接入</span>
     </div>
-    <div class="panel-heading history-actions"><span class="eyebrow">排版预览</span><span><button id="undo" title="撤销样式修改" disabled>撤销</button><button id="redo" title="重做样式修改" disabled>重做</button></span></div>
     <section class="preview-dock" id="preview" aria-label="卡片预览">
       <div class="preview-heading"><div><span class="eyebrow">图文预览</span><h2>3:4 卡片</h2></div><span class="ratio-label">3:4</span></div>
       <div class="preview-tools"><div class="segmented" aria-label="预览模式"><button id="compare" aria-pressed="true">双主题</button><button id="single" aria-pressed="false">当前主题</button></div></div>
+      <div class="formatting-area" id="text-tools">
+        <div class="formatting-toolbar" role="toolbar" aria-label="文字格式">
+          <button class="tool-button" id="undo" title="撤销" aria-label="撤销" disabled>↶</button>
+          <button class="tool-button" id="redo" title="重做" aria-label="重做" disabled>↷</button>
+          <span class="tool-divider" aria-hidden="true"></span>
+          <button class="tool-button" id="bold" title="加粗" aria-label="加粗" disabled><b>B</b></button>
+          <button class="tool-button" id="italic" title="斜体" aria-label="斜体" disabled><i>I</i></button>
+          <button class="tool-button" id="underline" title="下划线" aria-label="下划线" disabled><u>U</u></button>
+          <span class="tool-divider" aria-hidden="true"></span>
+          <button class="tool-button color-trigger" id="text-color-trigger" title="字体颜色" aria-label="字体颜色" aria-expanded="false" aria-controls="text-color-popover" disabled><span class="tool-letter">A</span><i class="color-indicator text-indicator"></i><span class="chevron">⌄</span></button>
+          <button class="tool-button color-trigger" id="highlight-trigger" title="背景高亮" aria-label="背景高亮" aria-expanded="false" aria-controls="highlight-popover" disabled><span class="marker-icon">▱</span><i class="color-indicator highlight-indicator"></i><span class="chevron">⌄</span></button>
+          <button class="tool-button clear-tool" id="clear" title="清除格式" aria-label="清除格式" disabled>Tx</button>
+        </div>
+        <div class="color-popover" id="text-color-popover" hidden>
+          <strong>字体颜色</strong>
+          <div class="swatch-grid" aria-label="字体颜色预设">
+            <button class="swatch" data-text-swatch="#252B27" style="--swatch:#252B27" aria-label="墨黑"></button>
+            <button class="swatch" data-text-swatch="#117C0D" style="--swatch:#117C0D" aria-label="草木深绿"></button>
+            <button class="swatch" data-text-swatch="#0961F6" style="--swatch:#0961F6" aria-label="湖蓝"></button>
+            <button class="swatch" data-text-swatch="#6E7932" style="--swatch:#6E7932" aria-label="苔绿"></button>
+            <button class="swatch" data-text-swatch="#9A5B35" style="--swatch:#9A5B35" aria-label="陶棕"></button>
+            <button class="swatch" data-text-swatch="#7B5D92" style="--swatch:#7B5D92" aria-label="雾紫"></button>
+          </div>
+          <label class="field-label" for="text-color">自定义色码</label>
+          <div class="color-row"><input type="color" id="text-picker" value="#117c0d" aria-label="选择文字颜色"><input id="text-color" value="#117C0D" aria-label="文字 HEX 色码" maxlength="7"><button id="apply-color" disabled>应用</button></div>
+        </div>
+        <div class="color-popover" id="highlight-popover" hidden>
+          <strong>背景高亮</strong>
+          <div class="swatch-grid" aria-label="高亮颜色预设">
+            <button class="swatch" data-highlight-swatch="#FAC75E" style="--swatch:#FAC75E" aria-label="麦秆暖黄"></button>
+            <button class="swatch" data-highlight-swatch="#BDDD22" style="--swatch:#BDDD22" aria-label="嫩绿"></button>
+            <button class="swatch" data-highlight-swatch="#BFD8F4" style="--swatch:#BFD8F4" aria-label="浅湖蓝"></button>
+            <button class="swatch" data-highlight-swatch="#DCE9CF" style="--swatch:#DCE9CF" aria-label="浅草绿"></button>
+            <button class="swatch" data-highlight-swatch="#E9DCC8" style="--swatch:#E9DCC8" aria-label="纸杏"></button>
+            <button class="swatch" data-highlight-swatch="#E2D9EA" style="--swatch:#E2D9EA" aria-label="浅雾紫"></button>
+          </div>
+          <label class="field-label" for="highlight-color">自定义色码</label>
+          <div class="color-row"><input type="color" id="highlight-picker" value="#bddd22" aria-label="选择高亮颜色"><input id="highlight-color" value="#BDDD22" aria-label="高亮 HEX 色码" maxlength="7"><button id="apply-highlight" disabled>应用</button></div>
+          <label class="field-label" for="opacity">透明度</label>
+          <div class="opacity-row"><input id="opacity" type="range" min="0" max="100" value="57"><input id="opacity-number" type="number" min="0" max="100" value="57" aria-label="高亮透明度百分比"><span>%</span></div>
+        </div>
+        <div class="selection-state"><span id="selection-count">未选中文字</span><span id="selection-text">请先在卡片中拖选文字</span></div>
+        <p id="text-error" class="error" role="alert"></p>
+      </div>
       <div id="cards" class="cards-grid"></div>
       <p id="font-status" class="font-status"></p>
     </section>
     <section class="settings-section">
       <h3>主题</h3>
-      <button class="theme-option" data-theme="wheat" aria-pressed="true"><span class="palette"><i style="background:#F7F3E8"></i><i style="background:#117C0D"></i><i style="background:#FAC75E"></i></span><span><strong>麦浪青野</strong><small>人文 · 米白与深绿</small></span><span class="theme-check">✓</span></button>
-      <button class="theme-option" data-theme="lime" aria-pressed="false"><span class="palette"><i style="background:#F8F7F0"></i><i style="background:#BDDD22"></i><i style="background:#0961F6"></i></span><span><strong>荔枝青绿</strong><small>科技 · 亮绿与湖蓝</small></span><span class="theme-check">✓</span></button>
+      <button class="theme-option" data-theme="wheat" aria-pressed="true"><span class="palette"><i style="background:#F7F5EF"></i><i style="background:#117C0D"></i><i style="background:#FAC75E"></i></span><span><strong>麦浪青野</strong><small>人文 · 暖纸白与深绿</small></span><span class="theme-check">✓</span></button>
+      <button class="theme-option" data-theme="lime" aria-pressed="false"><span class="palette"><i style="background:#F6F7F4"></i><i style="background:#BDDD22"></i><i style="background:#0961F6"></i></span><span><strong>荔枝青绿</strong><small>科技 · 冷纸白与湖蓝</small></span><span class="theme-check">✓</span></button>
       <label class="field-label" for="font">当前主题字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="system">原项目系统黑体</option></select>
       <div class="color-fields" id="theme-colors"></div>
       <p id="theme-error" class="error" role="alert"></p>
       <button id="restore-theme">恢复当前内置主题</button>
       <details><summary>保存自定义主题</summary><label class="field-label" for="theme-name">主题名称</label><input id="theme-name" maxlength="30" placeholder="例如：猫彦 · 观察"><button id="save-theme">保存当前配色与字体</button><label class="field-label" for="saved-theme">已保存主题</label><select id="saved-theme"><option value="">选择主题</option></select></details>
-    </section>
-    <section class="settings-section" id="text-tools">
-      <h3>文字强调 <span id="selection-count" class="tag">未选中文字</span></h3>
-      <p id="selection-text" class="selection-text">在任一卡片中拖选文字，两个主题会同步显示调整。</p>
-      <div class="text-actions"><button id="bold" disabled><b>B</b> 加粗</button><button id="italic" disabled><i>I</i> 斜体</button><button id="underline" disabled><u>U</u> 下划线</button><button id="clear" disabled>恢复原样</button></div>
-      <label class="field-label" for="text-color">文字颜色</label><div class="color-row"><input type="color" id="text-picker" value="#117c0d" aria-label="选择文字颜色"><input id="text-color" value="#117C0D" aria-label="文字 HEX 色码" maxlength="7"><button id="apply-color" disabled>应用</button></div>
-      <label class="field-label" for="highlight-color">高亮底色</label><div class="color-row"><input type="color" id="highlight-picker" value="#bddd22" aria-label="选择高亮颜色"><input id="highlight-color" value="#BDDD22" aria-label="高亮 HEX 色码" maxlength="7"><button id="apply-highlight" disabled>应用</button></div>
-      <label class="field-label" for="opacity">高亮透明度</label><div class="opacity-row"><input id="opacity" type="range" min="0" max="100" value="57"><input id="opacity-number" type="number" min="0" max="100" value="57" aria-label="高亮透明度百分比"><span>%</span></div>
-      <p id="text-error" class="error" role="alert"></p>
-      <small class="subtle">样式只保存在排版记录，不改动当前笔记。</small>
     </section>
     <section class="settings-section identity-settings">
       <h3>卡片身份</h3>
