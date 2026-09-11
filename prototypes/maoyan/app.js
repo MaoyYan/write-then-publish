@@ -19,7 +19,7 @@ const FONTS = { wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif', system: '"PingFang
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const validHex = (value) => /^#[\da-f]{6}$/i.test(value);
-let state = { source: SOURCE, active: 'wheat', compare: true, themes: clone(DEFAULTS), edits: {}, profile: { name: '猫彦', bio: '', avatar: '' }, custom: [] };
+let state = { source: SOURCE, active: 'wheat', themes: clone(DEFAULTS), edits: {}, profile: { name: '猫彦', bio: '', avatar: '' }, custom: [] };
 let selection = null;
 let past = [], future = [], renderFrame = 0;
 let storageAvailable = true;
@@ -143,8 +143,7 @@ const observer = new ResizeObserver((entries) => {
 });
 function render() {
   observer.disconnect(); $('cards').replaceChildren();
-  $('cards').classList.toggle('single', !state.compare);
-  const keys = state.compare ? ['wheat', 'lime'] : [state.active];
+  const keys = [state.active];
   for (const key of keys) {
     const theme = state.themes[key], column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
     const heading = document.createElement('div'); heading.className = 'column-heading';
@@ -271,8 +270,6 @@ document.querySelectorAll('[data-highlight-swatch]').forEach(button => button.on
 });
 $('undo').onclick = () => travel(past, future);
 $('redo').onclick = () => travel(future, past);
-$('compare').onclick = () => change(() => state.compare = true, true);
-$('single').onclick = () => change(() => state.compare = false, true);
 document.querySelectorAll('[data-theme]').forEach(button => button.onclick = () => change(() => state.active = button.dataset.theme, true));
 $('font').onchange = e => change(() => state.themes[state.active].font = e.target.value);
 $('restore-theme').onclick = () => change(() => state.themes[state.active] = clone(DEFAULTS[state.active]), true);
@@ -293,7 +290,6 @@ for (const [role, name] of Object.entries(colorNames)) {
 }
 function syncControls() {
   document.querySelectorAll('button[data-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.theme === state.active)));
-  $('compare').setAttribute('aria-pressed', String(state.compare)); $('single').setAttribute('aria-pressed', String(!state.compare));
   const theme = state.themes[state.active]; $('font').value = theme.font;
   Object.keys(colorNames).forEach(role => { $(`theme-${role}`).value = theme[role].toUpperCase(); $(`picker-${role}`).value = theme[role]; });
   $('profile-name').value = state.profile.name; $('profile-bio').value = state.profile.bio;
