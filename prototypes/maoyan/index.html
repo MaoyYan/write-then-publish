@@ -28,9 +28,14 @@
           <button class="tool-button" id="bold" title="加粗" aria-label="加粗" disabled><b>B</b></button>
           <button class="tool-button" id="italic" title="斜体" aria-label="斜体" disabled><i>I</i></button>
           <button class="tool-button" id="underline" title="下划线" aria-label="下划线" disabled><u>U</u></button>
+          <button class="tool-button strike-tool" id="strike" title="删除线" aria-label="删除线" disabled>S</button>
           <span class="tool-divider" aria-hidden="true"></span>
           <button class="tool-button color-trigger" id="text-color-trigger" title="字体颜色" aria-label="字体颜色" aria-expanded="false" aria-controls="text-color-popover" disabled><span class="tool-letter">A</span><i class="color-indicator text-indicator"></i><span class="chevron">⌄</span></button>
           <button class="tool-button color-trigger" id="highlight-trigger" title="背景高亮" aria-label="背景高亮" aria-expanded="false" aria-controls="highlight-popover" disabled><span class="marker-icon">▱</span><i class="color-indicator highlight-indicator"></i><span class="chevron">⌄</span></button>
+          <span class="tool-divider" aria-hidden="true"></span>
+          <select class="tool-select font-tool" id="format-font" aria-label="字体" title="字体" disabled><option value="">字体</option><option value="wenkai">霞鹜文楷</option><option value="song">宋体</option><option value="serif">衬线体</option><option value="sans">非衬线体</option></select>
+          <select class="tool-select size-tool" id="format-size" aria-label="字号" title="字号" disabled><option value="">字号</option><option value="16">16</option><option value="18">18</option><option value="20">20</option><option value="22">22</option><option value="24">24</option><option value="28">28</option><option value="32">32</option></select>
+          <span class="tool-divider" aria-hidden="true"></span>
           <button class="tool-button clear-tool" id="clear" title="清除格式" aria-label="清除格式" disabled>Tx</button>
         </div>
         <div class="color-popover" id="text-color-popover" hidden>
@@ -72,8 +77,10 @@
       <div class="theme-list" id="theme-list" aria-label="主题预设"></div>
       <div class="theme-editor" id="theme-editor" hidden>
         <div class="panel-heading"><strong id="theme-editor-title">主题设置</strong><button id="close-theme-editor" aria-label="关闭主题设置">×</button></div>
-        <label class="field-label" for="font">字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="system">系统黑体</option></select>
+        <label class="field-label" for="font">字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="song">宋体</option><option value="serif">衬线体</option><option value="sans">非衬线体</option></select>
         <div class="color-fields" id="theme-colors"></div>
+        <label class="field-label" for="key-opacity">重点色透明度</label>
+        <div class="opacity-row"><input id="key-opacity" type="range" min="0" max="100" value="100"><input id="key-opacity-number" type="number" min="0" max="100" value="100" aria-label="重点色透明度百分比"><span>%</span></div>
         <p id="theme-error" class="error" role="alert"></p>
         <label class="field-label" for="theme-name">新主题名称</label><input id="theme-name" maxlength="30" placeholder="例如：猫彦观察">
         <div class="theme-editor-actions"><button id="restore-theme">恢复预设</button><button id="save-theme" class="save-theme">另存为新主题</button></div>

@@ -10,15 +10,25 @@ const SOURCE = `# 图和文字是一体的
 我没有选择Skill的原因是因为实际上Skill每次在执行的时候它都会浪费Token的，但我认为这种排版的工作不需要去用Token，而且实际上有一些细小的视觉上面的审美差别，人可能还是要调一下的。
 
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
-const KEY = 'maoyan-layout-prototype-v4';
+const KEY = 'maoyan-layout-prototype-v5';
 const DEFAULTS = {
-  wheat: { name: '麦浪青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', font: 'wenkai' },
-  lime: { name: '荔枝青绿', paper: '#F6F7F4', text: '#29332A', key: '#0961F6', font: 'system' },
+  wheat: { name: '人文青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', keyOpacity: 100, font: 'wenkai' },
+  lime: { name: '荔青科技', paper: '#F6F7F4', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'sans' },
 };
-const FONTS = { wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif', system: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif' };
+const FONTS = {
+  wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif',
+  song: '"Source Han Serif SC","Songti SC",STSong,SimSun,serif',
+  serif: 'Georgia,"Noto Serif CJK SC","Songti SC",serif',
+  sans: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif',
+};
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const validHex = (value) => /^#[\da-f]{6}$/i.test(value);
+const validOpacity = (value) => Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
+const hexToRgba = (hex, opacity) => {
+  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${rgb.join(',')},${Number(opacity) / 100})`;
+};
 let state = { source: SOURCE, active: 'wheat', themes: clone(DEFAULTS), edits: {}, profile: { name: '猫彦', bio: '', avatar: '' }, custom: [] };
 let selection = null;
 let past = [], future = [], renderFrame = 0;
@@ -29,7 +39,7 @@ try {
   const saved = JSON.parse(localStorage.getItem(KEY));
   if (saved && saved.source === SOURCE && saved.themes?.[saved.active]
     && ['wheat', 'lime'].every((key) => saved.themes?.[key])
-    && Object.values(saved.themes).every((theme) => ['paper', 'text', 'key'].every((role) => validHex(theme[role])) && FONTS[theme.font] && typeof theme.name === 'string')
+    && Object.values(saved.themes).every((theme) => ['paper', 'text', 'key'].every((role) => validHex(theme[role])) && validOpacity(theme.keyOpacity) && FONTS[theme.font] && typeof theme.name === 'string')
     && typeof saved.profile?.name === 'string' && typeof saved.profile?.bio === 'string'
     && typeof saved.edits === 'object' && Array.isArray(saved.custom)
     && saved.custom.every((key) => saved.themes[key])) state = saved;
@@ -86,7 +96,7 @@ function makeIdentity() {
 }
 function makePaper(theme) {
   const paper = document.createElement('article'); paper.className = 'paper';
-  Object.entries({ '--paper': theme.paper, '--heading': theme.text, '--body': theme.text, '--accent-color': theme.key, '--font': FONTS[theme.font] }).forEach(([k,v]) => paper.style.setProperty(k,v));
+  Object.entries({ '--paper': theme.paper, '--heading': theme.text, '--body': theme.text, '--accent-color': hexToRgba(theme.key, theme.keyOpacity), '--font': FONTS[theme.font] }).forEach(([k,v]) => paper.style.setProperty(k,v));
   paper.append(makeIdentity());
   const content = document.createElement('div'); content.className = 'paper-content'; paper.append(content);
   const footer = document.createElement('div'); footer.className = 'paper-footer';
@@ -101,7 +111,11 @@ function makeBlock(block, chars) {
     const style = { ...char.base, ...(state.edits[char.id] || {}) };
     if (style.bold !== undefined) span.style.fontWeight = style.bold ? '700' : '400';
     if (style.italic !== undefined) span.style.fontStyle = style.italic ? 'italic' : 'normal';
-    if (style.underline !== undefined) span.style.textDecoration = style.underline ? 'underline' : 'none';
+    if (style.underline !== undefined || style.strike !== undefined) {
+      span.style.textDecorationLine = [style.underline ? 'underline' : '', style.strike ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
+    }
+    if (FONTS[style.font]) span.style.fontFamily = FONTS[style.font];
+    if (Number.isFinite(style.fontSize) && style.fontSize >= 12 && style.fontSize <= 64) span.style.fontSize = `${style.fontSize}px`;
     if (validHex(style.color)) span.style.color = style.color;
     if (/^rgba\([\d., ]+\)$/.test(style.background || '')) span.style.backgroundColor = style.background;
     if (selection && char.id >= selection.start && char.id < selection.end) span.classList.add('selected');
@@ -153,7 +167,8 @@ function render() {
     const column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
     const heading = document.createElement('div'); heading.className = 'column-heading';
     const name = document.createElement('strong'); name.textContent = theme.name;
-    const font = document.createElement('small'); font.textContent = theme.font === 'wenkai' ? '霞鹜文楷' : '系统黑体'; heading.append(name, font); column.append(heading);
+    const fontNames = { wenkai: '霞鹜文楷', song: '宋体', serif: '衬线体', sans: '非衬线体' };
+    const font = document.createElement('small'); font.textContent = fontNames[theme.font]; heading.append(name, font); column.append(heading);
     const pages = paginate(theme);
     pages.forEach((paper, i) => {
       paper.querySelector('.page-number').textContent = `${String(i+1).padStart(2,'0')} / ${String(pages.length).padStart(2,'0')}`;
@@ -183,10 +198,22 @@ function updateSelection() {
   const count = selection ? selection.end - selection.start : 0;
   $('selection-count').textContent = count ? `已选 ${count} 字` : '未选中文字';
   $('selection-text').textContent = count ? allChars.slice(selection.start, selection.end).map(c => c.text).join('') : '请先在卡片中拖选文字';
-  ['bold', 'italic', 'underline', 'clear', 'text-color-trigger', 'highlight-trigger', 'apply-color', 'apply-highlight'].forEach(id => $(id).disabled = !count);
-  for (const styleName of ['bold', 'italic', 'underline']) {
+  ['bold', 'italic', 'underline', 'strike', 'clear', 'text-color-trigger', 'highlight-trigger', 'apply-color', 'apply-highlight', 'format-font', 'format-size'].forEach(id => $(id).disabled = !count);
+  for (const styleName of ['bold', 'italic', 'underline', 'strike']) {
     const active = count && allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.[styleName] ?? c.base[styleName]));
     $(styleName).setAttribute('aria-pressed', String(Boolean(active)));
+  }
+  if (count) {
+    const selected = allChars.slice(selection.start, selection.end);
+    const commonValue = role => {
+      const values = selected.map(c => state.edits[c.id]?.[role] ?? '');
+      return values.every(value => value === values[0]) ? values[0] : '';
+    };
+    $('format-font').value = commonValue('font');
+    $('format-size').value = String(commonValue('fontSize'));
+  } else {
+    $('format-font').value = '';
+    $('format-size').value = '';
   }
   document.querySelectorAll('.theme-column [data-i]').forEach(span => {
     const id = Number(span.dataset.i);
@@ -211,6 +238,12 @@ $('underline').onclick = () => {
   const allUnderline = allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.underline ?? c.base.underline));
   applyStyle({ underline: !allUnderline });
 };
+$('strike').onclick = () => {
+  const allStruck = allChars.slice(selection.start, selection.end).every(c => (state.edits[c.id]?.strike ?? c.base.strike));
+  applyStyle({ strike: !allStruck });
+};
+$('format-font').onchange = event => { if (FONTS[event.target.value]) applyStyle({ font: event.target.value }); };
+$('format-size').onchange = event => { const value = Number(event.target.value); if (value) applyStyle({ fontSize: value }); };
 $('clear').onclick = () => {
   change(() => { for (let i = selection.start; i < selection.end; i++) delete state.edits[i]; });
   updateSelection();
@@ -290,7 +323,7 @@ function renderThemeList() {
     button.className = 'theme-option'; button.dataset.theme = key;
     button.setAttribute('aria-pressed', String(key === state.active && themeEditorMode !== 'add'));
     const palette = document.createElement('span'); palette.className = 'palette';
-    for (const color of [theme.paper, theme.text, theme.key]) {
+    for (const color of [theme.paper, theme.text, hexToRgba(theme.key, theme.keyOpacity)]) {
       const swatch = document.createElement('i'); swatch.style.background = color; palette.append(swatch);
     }
     const name = document.createElement('strong'); name.textContent = theme.name;
@@ -338,6 +371,8 @@ function syncThemeControls() {
   const theme = currentTheme();
   $('font').value = theme.font;
   Object.keys(colorNames).forEach(role => { $(`theme-${role}`).value = theme[role].toUpperCase(); $(`picker-${role}`).value = theme[role]; });
+  $('key-opacity').value = theme.keyOpacity;
+  $('key-opacity-number').value = theme.keyOpacity;
 }
 function syncControls() {
   renderThemeList();
@@ -345,6 +380,16 @@ function syncControls() {
   $('profile-name').value = state.profile.name; $('profile-bio').value = state.profile.bio;
 }
 $('font').onchange = e => updateThemeValue('font', e.target.value);
+$('key-opacity').oninput = e => $('key-opacity-number').value = e.target.value;
+$('key-opacity').onchange = e => updateThemeValue('keyOpacity', Number(e.target.value));
+$('key-opacity-number').oninput = e => {
+  if (validOpacity(e.target.value) && e.target.value !== '') $('key-opacity').value = e.target.value;
+};
+$('key-opacity-number').onchange = e => {
+  if (!validOpacity(e.target.value) || e.target.value === '') { $('theme-error').textContent = '重点色透明度请输入 0 到 100。'; return; }
+  $('theme-error').textContent = '';
+  updateThemeValue('keyOpacity', Number(e.target.value));
+};
 $('theme-list').addEventListener('click', event => event.stopPropagation());
 $('theme-editor').onclick = event => event.stopPropagation();
 $('close-theme-editor').onclick = closeThemeEditor;
