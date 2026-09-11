@@ -37,6 +37,7 @@ const hexToRgba = (hex, opacity) => {
   const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
   return `rgba(${rgb.join(',')},${Number(opacity) / 100})`;
 };
+const rgbToHex = values => `#${values.map(value => Math.round(value).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
 let state = { source: SOURCE, active: 'wheat', themes: clone(DEFAULTS), edits: {}, profile: { name: '猫彦', bio: '', avatar: '' }, custom: [] };
 let selection = null;
 let past = [], future = [], renderFrame = 0;
@@ -326,10 +327,10 @@ $('format-more').onclick = event => {
 };
 $('format-more-menu').onclick = event => event.stopPropagation();
 document.querySelectorAll('.color-popover').forEach(popover => popover.onclick = event => event.stopPropagation());
-document.addEventListener('click', () => { closePopovers(); closeMoreMenu(); });
+document.addEventListener('click', () => { closePopovers(); closeMoreMenu(); closePaperColorPopover(); });
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  closePopovers(); closeMoreMenu();
+  closePopovers(); closeMoreMenu(); closePaperColorPopover();
   if (!$('theme-editor').hidden) closeThemeEditor();
 });
 document.querySelectorAll('[data-text-swatch]').forEach(button => button.onclick = () => {
@@ -393,6 +394,8 @@ for (const [role, name] of Object.entries(colorNames)) {
   const row = document.createElement('div'); row.className = 'color-row';
   let picker;
   let panelHex;
+  let panelColor;
+  let panelRgb = [];
   if (role === 'paper') {
     picker = document.createElement('button'); picker.type = 'button'; picker.id = `picker-${role}`; picker.className = 'paper-color-trigger';
     picker.setAttribute('aria-label', '打开背景颜色面板'); picker.setAttribute('aria-expanded', 'false'); picker.style.setProperty('--paper-color', currentTheme().paper);
@@ -405,7 +408,7 @@ for (const [role, name] of Object.entries(colorNames)) {
     hex.setAttribute('aria-invalid','false'); $('theme-error').textContent = '';
     if (role === 'paper') {
       picker.style.setProperty('--paper-color', value);
-      if (panelHex) panelHex.value = value.toUpperCase();
+      syncPaperColorControls(value);
       syncPaperPresetState(value);
     } else picker.value = value;
     hex.value = value.toUpperCase();
@@ -417,6 +420,24 @@ for (const [role, name] of Object.entries(colorNames)) {
     panelHex = document.createElement('input'); panelHex.id = 'paper-panel-hex'; panelHex.maxLength = 7; panelHex.setAttribute('aria-label', '背景 HEX 色码');
     panelHex.onchange = e => update(e.target.value.trim());
     panelHex.onkeydown = e => { if (e.key === 'Enter') { update(e.target.value.trim()); e.target.blur(); } };
+    const visualRow = document.createElement('div'); visualRow.className = 'paper-color-visual-row';
+    const visualLabel = document.createElement('label'); visualLabel.htmlFor = 'paper-panel-picker'; visualLabel.textContent = '颜色面板';
+    panelColor = document.createElement('input'); panelColor.type = 'color'; panelColor.id = 'paper-panel-picker'; panelColor.setAttribute('aria-label', '打开颜色面板');
+    panelColor.oninput = e => update(e.target.value);
+    visualRow.append(visualLabel, panelColor);
+    const rgbLabel = document.createElement('span'); rgbLabel.className = 'paper-preset-label'; rgbLabel.textContent = 'RGB';
+    const rgbFields = document.createElement('div'); rgbFields.className = 'rgb-fields';
+    for (const channel of ['R', 'G', 'B']) {
+      const input = document.createElement('input'); input.type = 'number'; input.min = '0'; input.max = '255'; input.step = '1'; input.id = `paper-${channel.toLowerCase()}`; input.setAttribute('aria-label', `${channel} 通道`);
+      const applyRgb = () => {
+        const values = panelRgb.map(field => Number(field.value));
+        if (values.some(value => !Number.isInteger(value) || value < 0 || value > 255)) { $('theme-error').textContent = 'RGB 每个通道请输入 0 到 255 的整数。'; return; }
+        $('theme-error').textContent = ''; update(rgbToHex(values));
+      };
+      input.onchange = applyRgb;
+      input.onkeydown = e => { if (e.key === 'Enter') { applyRgb(); e.target.blur(); } };
+      panelRgb.push(input); rgbFields.append(input);
+    }
     const presetLabel = document.createElement('span'); presetLabel.className = 'paper-preset-label'; presetLabel.textContent = '常见底色';
     const presets = document.createElement('div'); presets.className = 'paper-presets'; presets.setAttribute('aria-label', '常见底色');
     for (const preset of PAPER_PRESETS) {
@@ -425,7 +446,7 @@ for (const [role, name] of Object.entries(colorNames)) {
       button.style.setProperty('--preset-color', preset.value); button.onclick = () => { update(preset.value); closePaperColorPopover(); };
       presets.append(button);
     }
-    popover.append(panelLabel, panelHex, presetLabel, presets); popover.onclick = event => event.stopPropagation(); box.append(popover);
+    popover.append(panelLabel, panelHex, visualRow, rgbLabel, rgbFields, presetLabel, presets); popover.onclick = event => event.stopPropagation(); box.append(popover);
     picker.onclick = event => {
       event.stopPropagation();
       const willOpen = popover.hidden;
@@ -443,6 +464,15 @@ function closePaperColorPopover() {
   if (!popover || !trigger) return;
   popover.hidden = true; trigger.setAttribute('aria-expanded', 'false');
 }
+function syncPaperColorControls(value) {
+  const upper = value.toUpperCase();
+  const channels = [1, 3, 5].map(index => parseInt(value.slice(index, index + 2), 16));
+  const panelHex = $('paper-panel-hex');
+  const panelColor = $('paper-panel-picker');
+  if (panelHex) panelHex.value = upper;
+  if (panelColor) panelColor.value = value;
+  ['r', 'g', 'b'].forEach((channel, index) => { const input = $(`paper-${channel}`); if (input) input.value = channels[index]; });
+}
 function syncPaperPresetState(value) {
   document.querySelectorAll('[data-paper-preset]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.paperPreset === value.toUpperCase())));
 }
@@ -453,7 +483,7 @@ function syncThemeControls() {
     $(`theme-${role}`).value = theme[role].toUpperCase();
     if (role === 'paper') {
       $(`picker-${role}`).style.setProperty('--paper-color', theme[role]);
-      $('paper-panel-hex').value = theme[role].toUpperCase();
+      syncPaperColorControls(theme[role]);
     } else $(`picker-${role}`).value = theme[role];
   });
   syncPaperPresetState(theme.paper);
