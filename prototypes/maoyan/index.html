@@ -67,15 +67,17 @@
       <div id="cards" class="cards-grid"></div>
       <p id="font-status" class="font-status"></p>
     </section>
-    <section class="settings-section">
-      <h3>主题</h3>
-      <button class="theme-option" data-theme="wheat" aria-pressed="true"><span class="palette"><i style="background:#F7F5EF"></i><i style="background:#117C0D"></i><i style="background:#FAC75E"></i></span><span><strong>麦浪青野</strong><small>人文 · 暖纸白与深绿</small></span><span class="theme-check">✓</span></button>
-      <button class="theme-option" data-theme="lime" aria-pressed="false"><span class="palette"><i style="background:#F6F7F4"></i><i style="background:#BDDD22"></i><i style="background:#0961F6"></i></span><span><strong>荔枝青绿</strong><small>科技 · 冷纸白与湖蓝</small></span><span class="theme-check">✓</span></button>
-      <label class="field-label" for="font">当前主题字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="system">原项目系统黑体</option></select>
-      <div class="color-fields" id="theme-colors"></div>
-      <p id="theme-error" class="error" role="alert"></p>
-      <button id="restore-theme">恢复当前内置主题</button>
-      <details><summary>保存自定义主题</summary><label class="field-label" for="theme-name">主题名称</label><input id="theme-name" maxlength="30" placeholder="例如：猫彦 · 观察"><button id="save-theme">保存当前配色与字体</button><label class="field-label" for="saved-theme">已保存主题</label><select id="saved-theme"><option value="">选择主题</option></select></details>
+    <section class="settings-section theme-settings">
+      <div class="theme-section-heading"><h3>主题</h3><button id="add-theme" class="compact-action">＋ 新增</button></div>
+      <div class="theme-list" id="theme-list" aria-label="主题预设"></div>
+      <div class="theme-editor" id="theme-editor" hidden>
+        <div class="panel-heading"><strong id="theme-editor-title">主题设置</strong><button id="close-theme-editor" aria-label="关闭主题设置">×</button></div>
+        <label class="field-label" for="font">字体</label><select id="font"><option value="wenkai">霞鹜文楷</option><option value="system">系统黑体</option></select>
+        <div class="color-fields" id="theme-colors"></div>
+        <p id="theme-error" class="error" role="alert"></p>
+        <label class="field-label" for="theme-name">新主题名称</label><input id="theme-name" maxlength="30" placeholder="例如：猫彦观察">
+        <div class="theme-editor-actions"><button id="restore-theme">恢复预设</button><button id="save-theme" class="save-theme">另存为新主题</button></div>
+      </div>
     </section>
     <section class="settings-section identity-settings">
       <h3>卡片身份</h3>

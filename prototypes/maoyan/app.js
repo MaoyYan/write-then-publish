@@ -10,10 +10,10 @@ const SOURCE = `# 图和文字是一体的
 我没有选择Skill的原因是因为实际上Skill每次在执行的时候它都会浪费Token的，但我认为这种排版的工作不需要去用Token，而且实际上有一些细小的视觉上面的审美差别，人可能还是要调一下的。
 
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
-const KEY = 'maoyan-layout-prototype-v3';
+const KEY = 'maoyan-layout-prototype-v4';
 const DEFAULTS = {
-  wheat: { name: '麦浪青野', paper: '#F7F5EF', heading: '#117C0D', body: '#29332A', accent: '#FAC75E', font: 'wenkai' },
-  lime: { name: '荔枝青绿', paper: '#F6F7F4', heading: '#0961F6', body: '#29332A', accent: '#BDDD22', font: 'system' },
+  wheat: { name: '麦浪青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', font: 'wenkai' },
+  lime: { name: '荔枝青绿', paper: '#F6F7F4', text: '#29332A', key: '#0961F6', font: 'system' },
 };
 const FONTS = { wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif', system: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif' };
 const $ = (id) => document.getElementById(id);
@@ -23,12 +23,16 @@ let state = { source: SOURCE, active: 'wheat', themes: clone(DEFAULTS), edits: {
 let selection = null;
 let past = [], future = [], renderFrame = 0;
 let storageAvailable = true;
+let themeEditorMode = 'edit';
+let draftTheme = null;
 try {
   const saved = JSON.parse(localStorage.getItem(KEY));
-  if (saved && saved.source === SOURCE && ['wheat', 'lime'].includes(saved.active)
-    && ['wheat', 'lime'].every((key) => saved.themes?.[key] && ['paper', 'heading', 'body', 'accent'].every((role) => validHex(saved.themes[key][role])) && FONTS[saved.themes[key].font])
+  if (saved && saved.source === SOURCE && saved.themes?.[saved.active]
+    && ['wheat', 'lime'].every((key) => saved.themes?.[key])
+    && Object.values(saved.themes).every((theme) => ['paper', 'text', 'key'].every((role) => validHex(theme[role])) && FONTS[theme.font] && typeof theme.name === 'string')
     && typeof saved.profile?.name === 'string' && typeof saved.profile?.bio === 'string'
-    && typeof saved.edits === 'object' && Array.isArray(saved.custom)) state = saved;
+    && typeof saved.edits === 'object' && Array.isArray(saved.custom)
+    && saved.custom.every((key) => saved.themes[key])) state = saved;
 } catch { storageAvailable = false; }
 
 function persist() {
@@ -82,7 +86,7 @@ function makeIdentity() {
 }
 function makePaper(theme) {
   const paper = document.createElement('article'); paper.className = 'paper';
-  Object.entries({ '--paper': theme.paper, '--heading': theme.heading, '--body': theme.body, '--accent-color': theme.accent, '--font': FONTS[theme.font] }).forEach(([k,v]) => paper.style.setProperty(k,v));
+  Object.entries({ '--paper': theme.paper, '--heading': theme.text, '--body': theme.text, '--accent-color': theme.key, '--font': FONTS[theme.font] }).forEach(([k,v]) => paper.style.setProperty(k,v));
   paper.append(makeIdentity());
   const content = document.createElement('div'); content.className = 'paper-content'; paper.append(content);
   const footer = document.createElement('div'); footer.className = 'paper-footer';
@@ -143,9 +147,10 @@ const observer = new ResizeObserver((entries) => {
 });
 function render() {
   observer.disconnect(); $('cards').replaceChildren();
-  const keys = [state.active];
-  for (const key of keys) {
-    const theme = state.themes[key], column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
+  const key = state.active;
+  {
+    const theme = themeEditorMode === 'add' && draftTheme ? draftTheme : state.themes[key];
+    const column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
     const heading = document.createElement('div'); heading.className = 'column-heading';
     const name = document.createElement('strong'); name.textContent = theme.name;
     const font = document.createElement('small'); font.textContent = theme.font === 'wenkai' ? '霞鹜文楷' : '系统黑体'; heading.append(name, font); column.append(heading);
@@ -255,7 +260,11 @@ $('text-color-trigger').onclick = event => { event.stopPropagation(); togglePopo
 $('highlight-trigger').onclick = event => { event.stopPropagation(); togglePopover('highlight-trigger', 'highlight-popover'); };
 document.querySelectorAll('.color-popover').forEach(popover => popover.onclick = event => event.stopPropagation());
 document.addEventListener('click', closePopovers);
-document.addEventListener('keydown', event => { if (event.key === 'Escape') closePopovers(); });
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  closePopovers();
+  if (!$('theme-editor').hidden) closeThemeEditor();
+});
 document.querySelectorAll('[data-text-swatch]').forEach(button => button.onclick = () => {
   const value = button.dataset.textSwatch;
   $('text-color').value = value; $('text-picker').value = value;
@@ -270,10 +279,47 @@ document.querySelectorAll('[data-highlight-swatch]').forEach(button => button.on
 });
 $('undo').onclick = () => travel(past, future);
 $('redo').onclick = () => travel(future, past);
-document.querySelectorAll('[data-theme]').forEach(button => button.onclick = () => change(() => state.active = button.dataset.theme, true));
-$('font').onchange = e => change(() => state.themes[state.active].font = e.target.value);
-$('restore-theme').onclick = () => change(() => state.themes[state.active] = clone(DEFAULTS[state.active]), true);
-const colorNames = { paper: '背景', heading: '标题', body: '正文', accent: '点缀' };
+const colorNames = { paper: '背景', text: '文字', key: '重点色' };
+const currentTheme = () => themeEditorMode === 'add' && draftTheme ? draftTheme : state.themes[state.active];
+function renderThemeList() {
+  $('theme-list').replaceChildren();
+  for (const key of ['wheat', 'lime', ...state.custom]) {
+    const theme = state.themes[key];
+    if (!theme) continue;
+    const button = document.createElement('button');
+    button.className = 'theme-option'; button.dataset.theme = key;
+    button.setAttribute('aria-pressed', String(key === state.active && themeEditorMode !== 'add'));
+    const palette = document.createElement('span'); palette.className = 'palette';
+    for (const color of [theme.paper, theme.text, theme.key]) {
+      const swatch = document.createElement('i'); swatch.style.background = color; palette.append(swatch);
+    }
+    const name = document.createElement('strong'); name.textContent = theme.name;
+    const check = document.createElement('span'); check.className = 'theme-check'; check.textContent = '✓';
+    button.append(palette, name, check);
+    button.onclick = () => {
+      if (state.active !== key || themeEditorMode === 'add') change(() => state.active = key, true);
+      themeEditorMode = 'edit'; draftTheme = null; openThemeEditor();
+    };
+    $('theme-list').append(button);
+  }
+}
+function openThemeEditor() {
+  $('theme-editor').hidden = false;
+  $('theme-editor-title').textContent = themeEditorMode === 'add' ? '新增主题' : `编辑 ${state.themes[state.active].name}`;
+  $('theme-name').value = '';
+  $('restore-theme').hidden = themeEditorMode === 'add' || !DEFAULTS[state.active];
+  syncThemeControls();
+}
+function closeThemeEditor() {
+  $('theme-editor').hidden = true;
+  if (themeEditorMode === 'add') { themeEditorMode = 'edit'; draftTheme = null; scheduleRender(); }
+  $('theme-error').textContent = '';
+  renderThemeList();
+}
+function updateThemeValue(role, value) {
+  if (themeEditorMode === 'add') { draftTheme[role] = value; scheduleRender(); }
+  else change(() => state.themes[state.active][role] = value);
+}
 for (const [role, name] of Object.entries(colorNames)) {
   const box = document.createElement('div');
   const label = document.createElement('label'); label.className = 'field-label'; label.htmlFor = `theme-${role}`; label.textContent = name;
@@ -283,27 +329,47 @@ for (const [role, name] of Object.entries(colorNames)) {
   const update = value => {
     if (!validHex(value)) { $('theme-error').textContent = `${name}请输入完整 HEX 色码，例如 #F1ECE0。`; hex.setAttribute('aria-invalid','true'); return; }
     hex.setAttribute('aria-invalid','false'); $('theme-error').textContent = ''; picker.value = value; hex.value = value.toUpperCase();
-    change(() => state.themes[state.active][role] = value);
+    updateThemeValue(role, value);
   };
   picker.onchange = e => update(e.target.value); hex.onchange = e => update(e.target.value.trim());
   row.append(picker, hex); box.append(label, row); $('theme-colors').append(box);
 }
-function syncControls() {
-  document.querySelectorAll('button[data-theme]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.theme === state.active)));
-  const theme = state.themes[state.active]; $('font').value = theme.font;
+function syncThemeControls() {
+  const theme = currentTheme();
+  $('font').value = theme.font;
   Object.keys(colorNames).forEach(role => { $(`theme-${role}`).value = theme[role].toUpperCase(); $(`picker-${role}`).value = theme[role]; });
-  $('profile-name').value = state.profile.name; $('profile-bio').value = state.profile.bio;
-  $('saved-theme').replaceChildren(new Option('选择主题', ''));
-  state.custom.forEach((theme, i) => $('saved-theme').add(new Option(theme.name, String(i))));
 }
+function syncControls() {
+  renderThemeList();
+  syncThemeControls();
+  $('profile-name').value = state.profile.name; $('profile-bio').value = state.profile.bio;
+}
+$('font').onchange = e => updateThemeValue('font', e.target.value);
+$('theme-list').addEventListener('click', event => event.stopPropagation());
+$('theme-editor').onclick = event => event.stopPropagation();
+$('close-theme-editor').onclick = closeThemeEditor;
+$('add-theme').onclick = event => {
+  event.stopPropagation();
+  themeEditorMode = 'add'; draftTheme = clone(state.themes[state.active]);
+  openThemeEditor(); scheduleRender(); renderThemeList();
+};
+$('restore-theme').onclick = () => {
+  if (!DEFAULTS[state.active]) return;
+  change(() => state.themes[state.active] = clone(DEFAULTS[state.active]), true);
+  $('theme-editor-title').textContent = `编辑 ${state.themes[state.active].name}`;
+};
 $('save-theme').onclick = () => {
   const name = $('theme-name').value.trim();
   if (!name) { $('theme-error').textContent = '请先填写主题名称。'; return; }
-  if (state.custom.some(t => t.name === name)) { $('theme-error').textContent = '这个名称已存在，请使用另一个名称。'; return; }
-  change(() => state.custom.push({ ...clone(state.themes[state.active]), name }), true);
-  $('theme-error').textContent = ''; $('announcement').textContent = `已保存主题 ${name}`;
+  if (Object.values(state.themes).some(theme => theme.name === name)) { $('theme-error').textContent = '这个名称已存在，请使用另一个名称。'; return; }
+  const source = clone(currentTheme()), key = `custom-${Date.now()}`;
+  change(() => {
+    state.themes[key] = { ...source, name };
+    state.custom.push(key); state.active = key;
+  }, true);
+  themeEditorMode = 'edit'; draftTheme = null; closeThemeEditor();
+  $('announcement').textContent = `已保存主题 ${name}`;
 };
-$('saved-theme').onchange = e => { if (e.target.value !== '') change(() => state.themes[state.active] = clone(state.custom[Number(e.target.value)]), true); };
 for (const [id, role] of [['profile-name','name'],['profile-bio','bio']]) $(id).onchange = e => change(() => state.profile[role] = e.target.value);
 $('avatar').onchange = async e => {
   const file = e.target.files[0]; if (!file) return;
@@ -319,8 +385,9 @@ $('avatar').onchange = async e => {
   reader.readAsDataURL(file);
 };
 function updateExport() {
-  const pages = document.querySelectorAll(`.theme-column[data-theme="${state.active}"] .paper`).length || paginate(state.themes[state.active]).length;
-  $('export-theme').textContent = state.themes[state.active].name;
+  const theme = currentTheme();
+  const pages = document.querySelectorAll(`.theme-column[data-theme="${state.active}"] .paper`).length || paginate(theme).length;
+  $('export-theme').textContent = theme.name;
   $('export-path').textContent = `会话选段-3比4图文/\n${Array.from({length:pages},(_,i) => `  ${i+1}.png`).join('\n')}`;
 }
 $('export').onclick = () => { $('export-panel').hidden = false; updateExport(); $('export-panel').scrollIntoView({ block:'nearest' }); };
