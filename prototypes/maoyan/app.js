@@ -10,16 +10,16 @@ const SOURCE = `# 图和文字是一体的
 我没有选择Skill的原因是因为实际上Skill每次在执行的时候它都会浪费Token的，但我认为这种排版的工作不需要去用Token，而且实际上有一些细小的视觉上面的审美差别，人可能还是要调一下的。
 
 我自己可能原文档没有加粗，但是我在生成卡片的时候，我希望有一些地方可以让我标颜色或者是加粗，那这个时候我可以直接在插件里面进行点选。`;
-const KEY = 'maoyan-layout-prototype-v5';
+const KEY = 'maoyan-layout-prototype-v7';
 const DEFAULTS = {
   wheat: { name: '人文青野', paper: '#F7F5EF', text: '#29332A', key: '#117C0D', keyOpacity: 100, font: 'wenkai' },
-  lime: { name: '荔青科技', paper: '#F6F7F4', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'sans' },
+  lime: { name: '荔青科技', paper: '#F6F7F4', text: '#29332A', key: '#BDDD22', keyOpacity: 100, font: 'source-sans' },
 };
 const FONTS = {
-  wenkai: 'WenkaiLocal,"Kaiti SC",KaiTi,serif',
-  song: '"Source Han Serif SC","Songti SC",STSong,SimSun,serif',
-  serif: 'Georgia,"Noto Serif CJK SC","Songti SC",serif',
-  sans: '"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif',
+  wenkai: '"LXGW WenKai Screen",WenkaiLocal,"Kaiti SC",KaiTi,serif',
+  'source-serif': '"Source Han Serif SC","Noto Serif CJK SC","Songti SC",STSong,SimSun,serif',
+  zhuque: '"Zhuque Fangsong",STFangsong,FangSong,"Songti SC",serif',
+  'source-sans': '"Source Han Sans SC","Noto Sans CJK SC","PingFang SC","Microsoft YaHei",sans-serif',
 };
 const $ = (id) => document.getElementById(id);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -167,7 +167,7 @@ function render() {
     const column = document.createElement('section'); column.className = 'theme-column'; column.dataset.theme = key;
     const heading = document.createElement('div'); heading.className = 'column-heading';
     const name = document.createElement('strong'); name.textContent = theme.name;
-    const fontNames = { wenkai: '霞鹜文楷', song: '宋体', serif: '衬线体', sans: '非衬线体' };
+    const fontNames = { wenkai: '霞鹜文楷', 'source-serif': '思源宋体', zhuque: '朱雀仿宋', 'source-sans': '思源黑体' };
     const font = document.createElement('small'); font.textContent = fontNames[theme.font]; heading.append(name, font); column.append(heading);
     const pages = paginate(theme);
     pages.forEach((paper, i) => {
@@ -374,10 +374,19 @@ function syncThemeControls() {
   $('key-opacity').value = theme.keyOpacity;
   $('key-opacity-number').value = theme.keyOpacity;
 }
+function syncAvatarPreview() {
+  const preview = $('avatar-preview');
+  preview.replaceChildren();
+  if (state.profile.avatar && /^data:image\/(png|jpeg|webp);base64,/.test(state.profile.avatar)) {
+    const image = document.createElement('img'); image.src = state.profile.avatar; image.alt = '';
+    preview.append(image);
+  } else preview.textContent = (state.profile.name || '猫彦').slice(0, 1);
+}
 function syncControls() {
   renderThemeList();
   syncThemeControls();
   $('profile-name').value = state.profile.name; $('profile-bio').value = state.profile.bio;
+  syncAvatarPreview();
 }
 $('font').onchange = e => updateThemeValue('font', e.target.value);
 $('key-opacity').oninput = e => $('key-opacity-number').value = e.target.value;
@@ -415,7 +424,7 @@ $('save-theme').onclick = () => {
   themeEditorMode = 'edit'; draftTheme = null; closeThemeEditor();
   $('announcement').textContent = `已保存主题 ${name}`;
 };
-for (const [id, role] of [['profile-name','name'],['profile-bio','bio']]) $(id).onchange = e => change(() => state.profile[role] = e.target.value);
+for (const [id, role] of [['profile-name','name'],['profile-bio','bio']]) $(id).onchange = e => change(() => state.profile[role] = e.target.value, true);
 $('avatar').onchange = async e => {
   const file = e.target.files[0]; if (!file) return;
   if (!['image/png','image/jpeg','image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) { $('avatar-error').textContent = '请选择小于 2 MB 的 PNG、JPEG 或 WebP 图片。'; return; }
@@ -424,7 +433,7 @@ $('avatar').onchange = async e => {
   reader.onload = () => {
     const image = new Image();
     image.onerror = () => $('avatar-error').textContent = '无法解码此图片，请换一张头像。';
-    image.onload = () => { $('avatar-error').textContent = ''; change(() => state.profile.avatar = reader.result); };
+    image.onload = () => { $('avatar-error').textContent = ''; change(() => state.profile.avatar = reader.result, true); };
     image.src = reader.result;
   };
   reader.readAsDataURL(file);
@@ -438,9 +447,5 @@ function updateExport() {
 $('export').onclick = () => { $('export-panel').hidden = false; updateExport(); $('export-panel').scrollIntoView({ block:'nearest' }); };
 $('close-export').onclick = () => $('export-panel').hidden = true;
 syncControls(); updateSelection(); render();
-document.fonts.load('20px WenkaiLocal').then(() => {
-  const available = document.fonts.check('20px WenkaiLocal');
-  $('font-status').textContent = available ? '霞鹜文楷已就绪' : '霞鹜文楷未检测到，当前使用后备字体';
-  scheduleRender();
-}).catch(() => { $('font-status').textContent = '霞鹜文楷未检测到，当前使用后备字体'; });
+document.fonts.load('20px WenkaiLocal').then(scheduleRender).catch(() => {});
 if (!storageAvailable) $('save-status').textContent = '存储不可用，当前修改仅本次有效';
